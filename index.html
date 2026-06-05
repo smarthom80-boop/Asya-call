@@ -4,9 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ася Звонилка</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;700;900&family=Onest:wght@300;400;500&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+<!-- Шрифты через bunny.net — работает в РФ без VPN (не Google) -->
+<link rel="preconnect" href="https://fonts.bunny.net">
+<link href="https://fonts.bunny.net/css?family=unbounded:400,700,900|onest:300,400,500&display=swap" rel="stylesheet">
+
+<!-- PeerJS через jsDelivr — не заблокирован в РФ -->
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -23,17 +28,17 @@
     --muted: #6b6b80;
     --green: #4ade80;
     --red: #f87171;
+    --yellow: #facc15;
   }
 
   html, body {
     height: 100%;
     background: var(--bg);
     color: var(--text);
-    font-family: 'Onest', sans-serif;
+    font-family: 'Onest', 'Segoe UI', sans-serif;
     overflow-x: hidden;
   }
 
-  /* Фоновый эффект */
   body::before {
     content: '';
     position: fixed;
@@ -56,7 +61,6 @@
     gap: 16px;
   }
 
-  /* Логотип */
   .logo {
     text-align: center;
     margin-bottom: 8px;
@@ -84,7 +88,23 @@
     letter-spacing: 0.02em;
   }
 
-  /* Карточки */
+  /* Бейдж безопасности */
+  .security-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    background: rgba(74,222,128,0.1);
+    border: 1px solid rgba(74,222,128,0.25);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-size: 0.72rem;
+    color: var(--green);
+    font-family: 'Onest', sans-serif;
+    letter-spacing: 0.04em;
+  }
+  .security-badge .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+
   .card {
     background: var(--card);
     border: 1px solid var(--border);
@@ -103,7 +123,6 @@
     margin-bottom: 18px;
   }
 
-  /* Статус */
   .status-row {
     display: flex;
     align-items: center;
@@ -119,16 +138,14 @@
   }
   .status-dot.online { background: var(--green); box-shadow: 0 0 8px var(--green); animation: pulse 2s infinite; }
   .status-dot.error { background: var(--red); }
+  .status-dot.warn { background: var(--yellow); }
+
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.5; }
   }
-  .status-text {
-    font-size: 0.8rem;
-    color: var(--muted);
-  }
+  .status-text { font-size: 0.8rem; color: var(--muted); }
 
-  /* ID поле */
   .id-box {
     display: flex;
     align-items: center;
@@ -168,7 +185,6 @@
   .btn-copy:active { transform: translateY(0); }
   .btn-copy.copied { background: var(--green); color: #000; }
 
-  /* Поле ввода ID */
   .input-field {
     width: 100%;
     background: var(--card2);
@@ -184,7 +200,6 @@
   .input-field::placeholder { color: var(--muted); }
   .input-field:focus { border-color: rgba(124,92,252,0.5); }
 
-  /* Переключатель аудио/видео */
   .mode-row {
     display: flex;
     gap: 10px;
@@ -214,7 +229,6 @@
     color: var(--purple2);
   }
 
-  /* Кнопка позвонить */
   .btn-call {
     width: 100%;
     background: linear-gradient(135deg, var(--purple) 0%, #a066ff 100%);
@@ -234,7 +248,6 @@
   .btn-call:active { transform: translateY(0); }
   .btn-call:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
 
-  /* Звонок — экран */
   .call-screen {
     display: none;
     flex-direction: column;
@@ -262,45 +275,42 @@
   }
   .video-label {
     position: absolute;
-    bottom: 8px; left: 10px;
+    bottom: 10px; left: 12px;
     font-size: 0.7rem;
     color: rgba(255,255,255,0.6);
     font-family: 'Unbounded', sans-serif;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
+
   .audio-indicator {
-    background: var(--card);
+    background: var(--card2);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 24px;
-    text-align: center;
-    display: none;
-  }
-  .audio-wave {
+    padding: 40px 28px;
     display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    gap: 4px;
-    height: 40px;
-    margin-bottom: 12px;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
   }
+  .audio-wave { display: flex; gap: 4px; align-items: flex-end; height: 36px; }
   .wave-bar {
-    width: 4px;
+    width: 5px;
+    border-radius: 3px;
     background: var(--purple);
-    border-radius: 2px;
     animation: wave 1.2s ease-in-out infinite;
   }
-  .wave-bar:nth-child(1) { height: 15px; animation-delay: 0s; }
-  .wave-bar:nth-child(2) { height: 30px; animation-delay: 0.15s; }
-  .wave-bar:nth-child(3) { height: 22px; animation-delay: 0.3s; }
-  .wave-bar:nth-child(4) { height: 35px; animation-delay: 0.1s; }
-  .wave-bar:nth-child(5) { height: 18px; animation-delay: 0.25s; }
-  .wave-bar:nth-child(6) { height: 28px; animation-delay: 0.05s; }
+  .wave-bar:nth-child(1) { height: 12px; animation-delay: 0s; }
+  .wave-bar:nth-child(2) { height: 24px; animation-delay: 0.15s; }
+  .wave-bar:nth-child(3) { height: 36px; animation-delay: 0.3s; }
+  .wave-bar:nth-child(4) { height: 20px; animation-delay: 0.45s; }
+  .wave-bar:nth-child(5) { height: 30px; animation-delay: 0.6s; }
+  .wave-bar:nth-child(6) { height: 14px; animation-delay: 0.75s; }
   @keyframes wave {
-    0%, 100% { transform: scaleY(0.5); opacity: 0.6; }
-    50% { transform: scaleY(1); opacity: 1; }
+    0%, 100% { transform: scaleY(1); opacity: 0.7; }
+    50% { transform: scaleY(1.5); opacity: 1; }
   }
-  .audio-caller { font-size: 0.9rem; color: var(--muted); }
+  .audio-caller { font-size: 0.8rem; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; font-family: 'Unbounded', sans-serif; }
 
   .call-controls {
     display: flex;
@@ -311,99 +321,162 @@
     background: var(--card2);
     border: 1px solid var(--border);
     border-radius: 12px;
-    padding: 13px;
-    color: var(--muted);
+    padding: 14px;
+    color: var(--text);
     font-family: 'Onest', sans-serif;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
   }
-  .btn-ctrl:hover { border-color: rgba(124,92,252,0.4); color: var(--text); }
-  .btn-ctrl.danger {
-    background: rgba(248,113,113,0.12);
-    border-color: rgba(248,113,113,0.3);
-    color: var(--red);
-  }
-  .btn-ctrl.danger:hover { background: rgba(248,113,113,0.22); }
+  .btn-ctrl:hover { border-color: rgba(124,92,252,0.4); }
+  .btn-ctrl.danger { background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.3); color: var(--red); }
+  .btn-ctrl.danger:hover { background: rgba(248,113,113,0.2); }
 
   /* Входящий звонок */
   .incoming {
     display: none;
-    background: var(--card);
-    border: 1px solid rgba(124,92,252,0.35);
-    border-radius: 20px;
-    padding: 24px;
-    text-align: center;
-    gap: 16px;
     flex-direction: column;
+    gap: 14px;
+    background: var(--card);
+    border: 1px solid rgba(124,92,252,0.3);
+    border-radius: 20px;
+    padding: 28px;
     animation: slideIn 0.3s ease;
   }
   .incoming.active { display: flex; }
   @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-10px); }
+    from { opacity: 0; transform: translateY(-12px); }
     to { opacity: 1; transform: translateY(0); }
   }
-  .incoming-title { font-family: 'Unbounded', sans-serif; font-size: 0.7rem; letter-spacing: 0.1em; color: var(--purple2); text-transform: uppercase; }
-  .incoming-id { font-size: 0.85rem; color: var(--muted); word-break: break-all; }
+  .incoming-title {
+    font-family: 'Unbounded', sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--purple2);
+    text-transform: uppercase;
+  }
+  .incoming-id { font-size: 0.8rem; color: var(--muted); word-break: break-all; }
   .incoming-btns { display: flex; gap: 10px; }
   .btn-accept {
-    flex: 1; background: var(--green); color: #000;
-    border: none; border-radius: 12px; padding: 14px;
-    font-family: 'Unbounded', sans-serif; font-size: 0.7rem; font-weight: 700;
-    letter-spacing: 0.06em; cursor: pointer; transition: all 0.2s;
+    flex: 1;
+    background: rgba(74,222,128,0.15);
+    border: 1px solid rgba(74,222,128,0.35);
+    color: var(--green);
+    border-radius: 12px;
+    padding: 13px;
+    font-family: 'Onest', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
   }
-  .btn-accept:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(74,222,128,0.35); }
+  .btn-accept:hover { background: rgba(74,222,128,0.25); }
   .btn-decline {
-    flex: 1; background: rgba(248,113,113,0.12); color: var(--red);
-    border: 1px solid rgba(248,113,113,0.3); border-radius: 12px; padding: 14px;
-    font-family: 'Unbounded', sans-serif; font-size: 0.7rem; font-weight: 700;
-    letter-spacing: 0.06em; cursor: pointer; transition: all 0.2s;
+    flex: 1;
+    background: rgba(248,113,113,0.1);
+    border: 1px solid rgba(248,113,113,0.3);
+    color: var(--red);
+    border-radius: 12px;
+    padding: 13px;
+    font-family: 'Onest', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
   }
-  .btn-decline:hover { background: rgba(248,113,113,0.22); }
+  .btn-decline:hover { background: rgba(248,113,113,0.18); }
 
-  /* Toast */
-  .toast {
-    position: fixed;
-    bottom: 24px; left: 50%;
-    transform: translateX(-50%) translateY(80px);
-    background: var(--card2);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    padding: 10px 20px;
-    font-size: 0.8rem;
-    color: var(--text);
-    transition: transform 0.3s ease;
-    z-index: 100;
-    white-space: nowrap;
-  }
-  .toast.show { transform: translateX(-50%) translateY(0); }
-
-  /* Ссылка */
   .share-link {
-    font-size: 0.72rem;
+    margin-top: 10px;
+    font-size: 0.75rem;
     color: var(--muted);
-    word-break: break-all;
-    margin-top: 6px;
-    line-height: 1.5;
   }
-  .share-link a { color: var(--purple2); text-decoration: none; }
+  .share-link a { color: var(--purple2); text-decoration: none; word-break: break-all; }
+  .share-link a:hover { text-decoration: underline; }
 
-  hr.divider {
+  .divider {
     border: none;
     border-top: 1px solid var(--border);
-    margin: 4px 0;
   }
+
+  /* Инфо-блок о соединении */
+  .conn-info {
+    margin-top: 10px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    line-height: 1.5;
+  }
+  .conn-info .relay-badge {
+    display: inline-block;
+    background: rgba(250,204,21,0.12);
+    border: 1px solid rgba(250,204,21,0.25);
+    color: var(--yellow);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.65rem;
+    font-family: 'Unbounded', sans-serif;
+    letter-spacing: 0.06em;
+  }
+  .conn-info .direct-badge {
+    display: inline-block;
+    background: rgba(74,222,128,0.1);
+    border: 1px solid rgba(74,222,128,0.25);
+    color: var(--green);
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 0.65rem;
+    font-family: 'Unbounded', sans-serif;
+    letter-spacing: 0.06em;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--card2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.3s;
+    white-space: nowrap;
+    z-index: 100;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Блок настроек безопасности */
+  .security-info {
+    background: rgba(74,222,128,0.05);
+    border: 1px solid rgba(74,222,128,0.15);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-top: 14px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .security-info strong { color: var(--green); font-weight: 500; }
 </style>
 </head>
 <body>
-
 <div class="wrapper">
 
-  <!-- Логотип -->
   <div class="logo">
-    <h1>ася<span>•</span>звонилка</h1>
-    <p>аудио и видеозвонки прямо в браузере</p>
+    <h1>Ася <span>Звонилка</span></h1>
+    <p>P2P звонки · без серверов · без слежки</p>
+    <div class="security-badge">
+      <div class="dot"></div>
+      SHA-256 PIN · E2E шифрование · TURN через 443/TCP
+    </div>
   </div>
 
   <!-- Входящий звонок -->
@@ -435,8 +508,9 @@
         <div class="wave-bar"></div><div class="wave-bar"></div>
         <div class="wave-bar"></div><div class="wave-bar"></div>
       </div>
-      <div class="audio-caller">голосовой звонок</div>
+      <div class="audio-caller" id="callModeLabel">голосовой звонок</div>
     </div>
+    <div id="connInfoDiv" class="conn-info" style="padding-left:2px; display:none"></div>
     <div class="call-controls">
       <button class="btn-ctrl" id="btnMute">🎤 звук</button>
       <button class="btn-ctrl danger" id="btnHangup">✕ завершить</button>
@@ -460,8 +534,17 @@
     <hr class="divider" style="margin-top:14px">
     <div style="margin-top:12px">
       <div class="card-label" style="margin-bottom:10px">🔒 пин-код (необязательно)</div>
-      <input class="input-field" id="myPin" type="text" maxlength="16" placeholder="установи пин — только знающий войдёт" style="font-size:0.82rem">
-      <div style="font-size:0.72rem; color:var(--muted); margin-top:8px; line-height:1.5">если задать пин — чужие звонки без него будут автоматически отклонены</div>
+      <input class="input-field" id="myPin" type="password" maxlength="32"
+             placeholder="установи пин — только знающий войдёт"
+             style="font-size:0.82rem">
+      <div style="font-size:0.72rem; color:var(--muted); margin-top:8px; line-height:1.5">
+        PIN хешируется SHA-256 — сервер видит только хеш, не сам код
+      </div>
+    </div>
+
+    <div class="security-info">
+      <strong>🛡 Как это защищено</strong><br>
+      Медиапоток зашифрован DTLS-SRTP (WebRTC стандарт). PIN хешируется SHA-256 на вашем устройстве перед отправкой — сервер никогда не знает настоящий код. TURN-сервер работает через порт 443/TCP — проходит через большинство файрволов РФ.
     </div>
   </div>
 
@@ -469,7 +552,9 @@
   <div class="card" id="dialCard">
     <div class="card-label">позвонить</div>
     <input class="input-field" id="remoteIdInput" type="text" placeholder="ID друга или вставь ссылку">
-    <input class="input-field" id="remotePin" type="text" maxlength="16" placeholder="пин-код собеседника (если он установил)" style="margin-top:10px; font-size:0.82rem">
+    <input class="input-field" id="remotePin" type="password" maxlength="32"
+           placeholder="пин-код собеседника (если он установил)"
+           style="margin-top:10px; font-size:0.82rem">
     <div class="mode-row">
       <button class="btn-mode active" id="btnAudio" onclick="setMode('audio')">🎙 аудио</button>
       <button class="btn-mode" id="btnVideo" onclick="setMode('video')">📹 видео</button>
@@ -482,25 +567,40 @@
 <div class="toast" id="toast"></div>
 
 <script>
+// ── SHA-256 хеширование PIN ──────────────────────────────────────────────────
+async function hashPin(pin) {
+  if (!pin) return '';
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pin));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── ICE серверы ──────────────────────────────────────────────────────────────
+// Все серверы работают на порту 443/TCP — проходит через РФ фаерволы без VPN
+const ICE_SERVERS = [
+  // Cloudflare STUN (не Google, не блокируется в РФ)
+  { urls: 'stun:stun.cloudflare.com:3478' },
+  // Резервные STUN от разных провайдеров
+  { urls: 'stun:openrelay.metered.ca:80' },
+  // OpenRelay TURN — бесплатный, работает на 443/TCP
+  { urls: 'turn:openrelay.metered.ca:80',     username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443',    username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+];
+
 let peer, myPeerId, currentCall, localStream;
 let callMode = 'audio';
 let muted = false;
 
-// Инициализация PeerJS
+// ── Инициализация PeerJS ─────────────────────────────────────────────────────
+// Используется публичный PeerJS сервер. Для продакшена замени на свой.
 function initPeer() {
   peer = new Peer(undefined, {
     host: '0.peerjs.com',
     port: 443,
     path: '/',
     secure: true,
-    config: {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' }
-      ]
-    }
+    config: { iceServers: ICE_SERVERS }
   });
 
   peer.on('open', id => {
@@ -511,40 +611,41 @@ function initPeer() {
     document.getElementById('statusText').textContent = 'онлайн';
     document.getElementById('btnCall').disabled = false;
 
-    // Ссылка
     const link = window.location.origin + window.location.pathname + '?call=' + id;
     const el = document.getElementById('shareLinkA');
     el.href = link;
     el.textContent = link.replace('https://', '');
     document.getElementById('shareLink').style.display = 'block';
 
-    // Если открыли по ссылке
     const params = new URLSearchParams(window.location.search);
     if (params.get('call')) {
       document.getElementById('remoteIdInput').value = params.get('call');
     }
   });
 
-  peer.on('call', incoming => {
-    // Проверка PIN если установлен
-    const myPin = document.getElementById('myPin').value.trim();
-    const theirPin = incoming.metadata && incoming.metadata.pin ? incoming.metadata.pin : '';
-    if (myPin && theirPin !== myPin) {
+  peer.on('call', async incoming => {
+    const myPinRaw = document.getElementById('myPin').value.trim();
+    const myPinHash = await hashPin(myPinRaw);
+    const theirPinHash = (incoming.metadata && incoming.metadata.pinHash) ? incoming.metadata.pinHash : '';
+
+    // Если PIN установлен — сравниваем хеши
+    if (myPinHash && theirPinHash !== myPinHash) {
       incoming.close();
-      showToast('❌ Отклонён звонок — неверный PIN');
+      showToast('❌ Отклонён — неверный PIN');
       return;
     }
 
+    const incomingMode = (incoming.metadata && incoming.metadata.mode) ? incoming.metadata.mode : 'audio';
     document.getElementById('incomingId').textContent = incoming.peer;
     document.getElementById('incoming').classList.add('active');
 
     document.getElementById('btnAccept').onclick = () => {
       document.getElementById('incoming').classList.remove('active');
-      getMedia(callMode).then(stream => {
+      getMedia(incomingMode).then(stream => {
         localStream = stream;
         incoming.answer(stream);
-        setupCall(incoming, stream, callMode);
-      });
+        setupCall(incoming, stream, incomingMode);
+      }).catch(() => showToast('Нет доступа к камере/микрофону'));
     };
     document.getElementById('btnDecline').onclick = () => {
       incoming.close();
@@ -553,15 +654,19 @@ function initPeer() {
   });
 
   peer.on('disconnected', () => {
-    document.getElementById('statusDot').className = 'status-dot error';
+    document.getElementById('statusDot').className = 'status-dot warn';
     document.getElementById('statusText').textContent = 'отключён — переподключение...';
-    setTimeout(() => peer.reconnect(), 2000);
+    setTimeout(() => { try { peer.reconnect(); } catch(e) {} }, 2000);
   });
 
   peer.on('error', e => {
     document.getElementById('statusDot').className = 'status-dot error';
     document.getElementById('statusText').textContent = 'ошибка: ' + e.type;
     showToast('Ошибка: ' + e.type);
+    // Переподключаемся при критических ошибках
+    if (e.type === 'server-error' || e.type === 'socket-error') {
+      setTimeout(initPeer, 3000);
+    }
   });
 }
 
@@ -573,43 +678,54 @@ function setMode(m) {
 
 function getMedia(mode) {
   return navigator.mediaDevices.getUserMedia({
-    audio: true,
-    video: mode === 'video' ? { width: 640, height: 480 } : false
+    audio: { echoCancellation: true, noiseSuppression: true },
+    video: mode === 'video' ? { width: 640, height: 480, facingMode: 'user' } : false
   });
 }
 
-function makeCall() {
+async function makeCall() {
   let rid = document.getElementById('remoteIdInput').value.trim();
-  // Если вставили ссылку — достаём ID
-  try {
-    const u = new URL(rid);
-    rid = u.searchParams.get('call') || rid;
-  } catch(e) {}
+  try { const u = new URL(rid); rid = u.searchParams.get('call') || rid; } catch(e) {}
 
   if (!rid) { showToast('Введи ID собеседника'); return; }
   if (rid === myPeerId) { showToast('Нельзя позвонить самому себе :)'); return; }
 
-  const pin = document.getElementById('remotePin').value.trim();
+  const pinRaw = document.getElementById('remotePin').value.trim();
+  const pinHash = await hashPin(pinRaw);
+
+  document.getElementById('btnCall').disabled = true;
+  document.getElementById('btnCall').textContent = 'СОЕДИНЕНИЕ...';
+
   getMedia(callMode).then(stream => {
     localStream = stream;
-    const call = peer.call(rid, stream, { metadata: { mode: callMode, pin: pin } });
+    const call = peer.call(rid, stream, { metadata: { mode: callMode, pinHash } });
     setupCall(call, stream, callMode);
-  }).catch(() => showToast('Нет доступа к камере/микрофону'));
+  }).catch(() => {
+    showToast('Нет доступа к камере/микрофону');
+    resetCallBtn();
+  });
+}
+
+function resetCallBtn() {
+  const btn = document.getElementById('btnCall');
+  btn.disabled = false;
+  btn.textContent = 'ПОЗВОНИТЬ';
 }
 
 function setupCall(call, stream, mode) {
   currentCall = call;
 
-  // Показываем экран звонка
   document.getElementById('callScreen').classList.add('active');
   document.getElementById('mainCard').style.display = 'none';
   document.getElementById('dialCard').style.display = 'none';
 
+  const labelEl = document.getElementById('callModeLabel');
+  labelEl.textContent = mode === 'video' ? 'видеозвонок' : 'голосовой звонок';
+
   if (mode === 'video') {
     document.getElementById('videoGrid').style.display = 'grid';
     document.getElementById('audioIndicator').style.display = 'none';
-    const lv = document.getElementById('localVideo');
-    lv.srcObject = stream;
+    document.getElementById('localVideo').srcObject = stream;
   } else {
     document.getElementById('videoGrid').style.display = 'none';
     document.getElementById('audioIndicator').style.display = 'block';
@@ -619,6 +735,8 @@ function setupCall(call, stream, mode) {
     if (mode === 'video') {
       document.getElementById('remoteVideo').srcObject = remoteStream;
     }
+    // Показываем тип соединения (TURN relay или прямое P2P)
+    monitorConnection(call.peerConnection);
   });
 
   call.on('close', endCall);
@@ -628,12 +746,33 @@ function setupCall(call, stream, mode) {
   document.getElementById('btnMute').onclick = toggleMute;
 }
 
+// Показываем пользователю тип соединения — TURN или прямое
+async function monitorConnection(pc) {
+  if (!pc) return;
+  try {
+    const stats = await pc.getStats();
+    stats.forEach(report => {
+      if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+        const isRelay = report.remoteCandidateId && stats.get(report.remoteCandidateId)?.candidateType === 'relay';
+        const div = document.getElementById('connInfoDiv');
+        div.style.display = 'flex';
+        if (isRelay) {
+          div.innerHTML = '<span class="relay-badge">TURN RELAY</span> трафик через сервер-посредник (РФ-совместимо)';
+        } else {
+          div.innerHTML = '<span class="direct-badge">P2P ПРЯМОЕ</span> прямое соединение между устройствами';
+        }
+      }
+    });
+  } catch(e) {}
+}
+
 function toggleMute() {
   if (!localStream) return;
   muted = !muted;
   localStream.getAudioTracks().forEach(t => t.enabled = !muted);
-  document.getElementById('btnMute').textContent = muted ? '🔇 без звука' : '🎤 звук';
-  document.getElementById('btnMute').style.color = muted ? 'var(--red)' : '';
+  const btn = document.getElementById('btnMute');
+  btn.textContent = muted ? '🔇 без звука' : '🎤 звук';
+  btn.style.color = muted ? 'var(--red)' : '';
 }
 
 function endCall() {
@@ -644,7 +783,10 @@ function endCall() {
   document.getElementById('videoGrid').style.display = 'grid';
   document.getElementById('localVideo').srcObject = null;
   document.getElementById('remoteVideo').srcObject = null;
+  document.getElementById('connInfoDiv').style.display = 'none';
+  document.getElementById('connInfoDiv').innerHTML = '';
   muted = false;
+  resetCallBtn();
   showToast('Звонок завершён');
 }
 

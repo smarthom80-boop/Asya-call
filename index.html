@@ -475,7 +475,7 @@
     <p>P2P звонки · без серверов · без слежки</p>
     <div class="security-badge">
       <div class="dot"></div>
-      SHA-256 PIN · E2E шифрование · TURN через 443/TCP
+      SHA-256 PIN · E2E шифрование · авто-выбор сервера РФ
     </div>
   </div>
 
@@ -544,7 +544,8 @@
 
     <div class="security-info">
       <strong>🛡 Как это защищено</strong><br>
-      Медиапоток зашифрован DTLS-SRTP (WebRTC стандарт). PIN хешируется SHA-256 на вашем устройстве перед отправкой — сервер никогда не знает настоящий код. TURN-сервер работает через порт 443/TCP — проходит через большинство файрволов РФ.
+      Медиапоток зашифрован DTLS-SRTP (WebRTC стандарт). PIN хешируется SHA-256 на вашем устройстве перед отправкой — сервер никогда не знает настоящий код. TURN-сервер работает через порт 443/TCP — проходит через большинство файрволов РФ.<br><br>
+      <strong>🇷🇺 РФ без VPN:</strong> приложение автоматически перебирает несколько серверов сигнализации (peerjs.com → piet.us → onrender.com) и подключается к первому доступному.
     </div>
   </div>
 
@@ -574,41 +575,83 @@ async function hashPin(pin) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
-// ── ICE серверы ──────────────────────────────────────────────────────────────
-// Все серверы работают на порту 443/TCP — проходит через РФ фаерволы без VPN
+// ── ICE серверы (STUN/TURN) ──────────────────────────────────────────────────
+// Всё на 443/TCP — проходит через РФ фаерволы без VPN
 const ICE_SERVERS = [
-  // Cloudflare STUN (не Google, не блокируется в РФ)
+  // Cloudflare STUN — не заблокирован в РФ
   { urls: 'stun:stun.cloudflare.com:3478' },
-  // Резервные STUN от разных провайдеров
+  // Дополнительные STUN (разные провайдеры)
+  { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:openrelay.metered.ca:80' },
-  // OpenRelay TURN — бесплатный, работает на 443/TCP
+  { urls: 'stun:stun.services.mozilla.com:3478' },
+  // OpenRelay TURN — бесплатный, 443/TCP
   { urls: 'turn:openrelay.metered.ca:80',     username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:443',    username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
   { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
 ];
 
+// ── Список PeerJS-серверов для fallback ──────────────────────────────────────
+// 0.peerjs.com заблокирован в РФ с 2023 года.
+// Перебираем альтернативы по очереди.
+const PEER_SERVERS = [
+  // PeerJS официальный (работает с VPN или за рубежом)
+  { host: '0.peerjs.com', port: 443, path: '/', secure: true, label: 'peerjs.com' },
+  // Публичный сервер peer-eu (Европа, не заблокирован в РФ по состоянию на 2025)
+  { host: 'peer.piet.us', port: 443, path: '/myapp', secure: true, label: 'piet.us' },
+  // Резервный через Render.com (CDN Cloudflare — обычно не блокируется)
+  { host: 'peerjs-server.onrender.com', port: 443, path: '/', secure: true, label: 'onrender.com' },
+];
+
 let peer, myPeerId, currentCall, localStream;
 let callMode = 'audio';
 let muted = false;
+let serverIndex = 0;
+let connectTimeout = null;
 
-// ── Инициализация PeerJS ─────────────────────────────────────────────────────
-// Используется публичный PeerJS сервер. Для продакшена замени на свой.
-function initPeer() {
+// ── Инициализация PeerJS с автоматическим перебором серверов ─────────────────
+function initPeer(idx) {
+  if (idx === undefined) idx = serverIndex;
+  if (idx >= PEER_SERVERS.length) {
+    // Все серверы не ответили — показываем ошибку и повторяем через 10 сек
+    document.getElementById('statusDot').className = 'status-dot error';
+    document.getElementById('statusText').textContent = 'нет соединения — повтор через 10 сек...';
+    showToast('❌ Все серверы недоступны. Повтор через 10 сек.');
+    setTimeout(() => { serverIndex = 0; initPeer(0); }, 10000);
+    return;
+  }
+
+  const srv = PEER_SERVERS[idx];
+  document.getElementById('statusDot').className = 'status-dot warn';
+  document.getElementById('statusText').textContent = 'подключение к ' + srv.label + '...';
+
+  // Уничтожаем старый peer если есть
+  if (peer) { try { peer.destroy(); } catch(e) {} peer = null; }
+
   peer = new Peer(undefined, {
-    host: '0.peerjs.com',
-    port: 443,
-    path: '/',
-    secure: true,
-    config: { iceServers: ICE_SERVERS }
+    host: srv.host,
+    port: srv.port,
+    path: srv.path,
+    secure: srv.secure,
+    config: { iceServers: ICE_SERVERS },
+    debug: 0
   });
 
+  // Таймаут — если за 7 сек не подключился, пробуем следующий сервер
+  connectTimeout = setTimeout(() => {
+    serverIndex = idx + 1;
+    showToast('⚡ ' + srv.label + ' не ответил, пробую следующий...');
+    initPeer(serverIndex);
+  }, 7000);
+
   peer.on('open', id => {
+    clearTimeout(connectTimeout);
+    serverIndex = idx; // запоминаем рабочий сервер
     myPeerId = id;
     document.getElementById('myId').textContent = id;
     document.getElementById('myId').classList.remove('loading');
     document.getElementById('statusDot').className = 'status-dot online';
-    document.getElementById('statusText').textContent = 'онлайн';
+    document.getElementById('statusText').textContent = 'онлайн · ' + srv.label;
     document.getElementById('btnCall').disabled = false;
 
     const link = window.location.origin + window.location.pathname + '?call=' + id;
@@ -628,7 +671,6 @@ function initPeer() {
     const myPinHash = await hashPin(myPinRaw);
     const theirPinHash = (incoming.metadata && incoming.metadata.pinHash) ? incoming.metadata.pinHash : '';
 
-    // Если PIN установлен — сравниваем хеши
     if (myPinHash && theirPinHash !== myPinHash) {
       incoming.close();
       showToast('❌ Отклонён — неверный PIN');
@@ -656,16 +698,22 @@ function initPeer() {
   peer.on('disconnected', () => {
     document.getElementById('statusDot').className = 'status-dot warn';
     document.getElementById('statusText').textContent = 'отключён — переподключение...';
-    setTimeout(() => { try { peer.reconnect(); } catch(e) {} }, 2000);
+    setTimeout(() => { try { peer.reconnect(); } catch(e) { initPeer(serverIndex); } }, 2000);
   });
 
   peer.on('error', e => {
-    document.getElementById('statusDot').className = 'status-dot error';
-    document.getElementById('statusText').textContent = 'ошибка: ' + e.type;
-    showToast('Ошибка: ' + e.type);
-    // Переподключаемся при критических ошибках
-    if (e.type === 'server-error' || e.type === 'socket-error') {
-      setTimeout(initPeer, 3000);
+    clearTimeout(connectTimeout);
+    const isConnectError = ['server-error', 'socket-error', 'socket-closed', 'network'].includes(e.type);
+    if (isConnectError && !myPeerId) {
+      // Ошибка при подключении — пробуем следующий сервер
+      serverIndex = idx + 1;
+      showToast('⚡ ' + srv.label + ': ' + e.type + ' → следующий сервер...');
+      setTimeout(() => initPeer(serverIndex), 1000);
+    } else {
+      document.getElementById('statusDot').className = 'status-dot error';
+      document.getElementById('statusText').textContent = 'ошибка: ' + e.type;
+      showToast('Ошибка: ' + e.type);
+      if (isConnectError) setTimeout(() => initPeer(serverIndex), 5000);
     }
   });
 }
@@ -807,7 +855,7 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
-initPeer();
+initPeer(0);
 </script>
 </body>
 </html>

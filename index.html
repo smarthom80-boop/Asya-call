@@ -475,7 +475,7 @@
     <p>P2P звонки · без серверов · без слежки</p>
     <div class="security-badge">
       <div class="dot"></div>
-      SHA-256 PIN · E2E шифрование · авто-выбор сервера РФ
+      SHA-256 PIN · E2E шифрование · Metered→freestun резерв
     </div>
   </div>
 
@@ -544,8 +544,11 @@
 
     <div class="security-info">
       <strong>🛡 Как это защищено</strong><br>
-      Медиапоток зашифрован DTLS-SRTP (WebRTC стандарт). PIN хешируется SHA-256 на вашем устройстве перед отправкой — сервер никогда не знает настоящий код. TURN-сервер работает через порт 443/TCP — проходит через большинство файрволов РФ.<br><br>
-      <strong>🇷🇺 РФ без VPN:</strong> приложение автоматически перебирает несколько серверов сигнализации (peerjs.com → piet.us → onrender.com) и подключается к первому доступному.
+      Медиапоток зашифрован DTLS-SRTP (WebRTC стандарт). PIN хешируется SHA-256 на вашем устройстве — сервер никогда не знает настоящий код.<br><br>
+      <strong>📡 TURN серверы (для РФ без VPN):</strong><br>
+      1️⃣ <strong>Metered.ca</strong> — основной, порт 443/TCP, проходит через РФ фаерволы (500 MB/мес)<br>
+      2️⃣ <strong>freestun.net</strong> — резерв, автоматически если Metered исчерпан<br>
+      Браузер сам выбирает лучший рабочий сервер.
     </div>
   </div>
 
@@ -576,19 +579,29 @@ async function hashPin(pin) {
 }
 
 // ── ICE серверы (STUN/TURN) ──────────────────────────────────────────────────
-// Всё на 443/TCP — проходит через РФ фаерволы без VPN
+// Стратегия: Metered.ca (443/TCP, надёжно для РФ) → freestun.net (резерв)
+// Браузер сам выберет лучший рабочий сервер из списка (ICE)
+
+const METERED_USER = '3da68684d6c099b828cc2328';
+const METERED_PASS = 'LDBzfZp4LCYgwe2i';
+
 const ICE_SERVERS = [
-  // Cloudflare STUN — не заблокирован в РФ
+  // ── STUN (определение публичного IP) ──
   { urls: 'stun:stun.cloudflare.com:3478' },
-  // Дополнительные STUN (разные провайдеры)
   { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:openrelay.metered.ca:80' },
-  { urls: 'stun:stun.services.mozilla.com:3478' },
-  // OpenRelay TURN — бесплатный, 443/TCP
-  { urls: 'turn:openrelay.metered.ca:80',     username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443',    username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'stun:fr-turn1.xirsys.com' },
+
+  // ── TURN Metered.ca — основной (порт 443/TCP, проходит через РФ фаерволы) ──
+  { urls: 'turn:standard.relay.metered.ca:80',               username: METERED_USER, credential: METERED_PASS },
+  { urls: 'turn:standard.relay.metered.ca:80?transport=tcp', username: METERED_USER, credential: METERED_PASS },
+  { urls: 'turn:standard.relay.metered.ca:443',              username: METERED_USER, credential: METERED_PASS },
+  { urls: 'turns:standard.relay.metered.ca:443?transport=tcp', username: METERED_USER, credential: METERED_PASS },
+
+  // ── TURN freestun.net — резерв (если Metered исчерпан или недоступен) ──
+  { urls: 'stun:freestun.net:3479' },
+  { urls: 'turn:freestun.net:3478',  username: 'free', credential: 'free' },
+  { urls: 'turn:freestun.net:3479',  username: 'free', credential: 'free' },
+  { urls: 'turns:freestun.net:5350', username: 'free', credential: 'free' },
 ];
 
 // ── Список PeerJS-серверов для fallback ──────────────────────────────────────
